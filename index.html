@@ -1,0 +1,971 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agendamento - Barbearia Pedro's</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        body { font-family: 'Inter', sans-serif; }
+        
+        .gradient-bg {
+            background: linear-gradient(135deg, #000000 0%, #333333 100%);
+        }
+        
+        .premium-gradient {
+            background: linear-gradient(135deg, #333333 0%, #666666 100%);
+        }
+        
+        .service-card, .barber-card, .plan-card {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .service-card:hover, .barber-card:hover, .plan-card:hover,
+        .service-card:active, .barber-card:active, .plan-card:active {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        
+        .service-card.selected, .barber-card.selected, .plan-card.selected {
+            border-color: #333333;
+            background: linear-gradient(135deg, #33333310, #66666610);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+        }
+        
+        .plan-card.premium.selected {
+            border-color: #666666;
+            background: linear-gradient(135deg, #33333310, #66666610);
+        }
+        
+        .time-slot {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            -webkit-tap-highlight-color: transparent;
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .time-slot:hover, .time-slot:active {
+            background: #33333320;
+            transform: scale(1.02);
+        }
+        
+        .time-slot.selected {
+            background: linear-gradient(135deg, #333333, #666666);
+            color: white;
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        
+        .time-slot.unavailable {
+            opacity: 0.5;
+            cursor: not-allowed;
+            background: #f3f4f6;
+        }
+        
+        .step-indicator {
+            transition: all 0.3s ease;
+        }
+        
+        .step-indicator.active {
+            background: linear-gradient(135deg, #333333, #666666);
+            color: white;
+        }
+        
+        .step-indicator.completed {
+            background: #10b981;
+            color: white;
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.8s ease-out;
+        }
+        
+        .slide-up {
+            animation: slideUp 1s ease-out 0.5s both;
+        }
+        
+        .elegant-entrance {
+            animation: elegantEntrance 1.2s ease-out 1.5s both;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        @keyframes elegantEntrance {
+            from { opacity: 0; transform: scale(0.95) translateY(20px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        
+        .loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            animation: fadeOut 0.8s ease-out 3s both;
+        }
+        
+        @keyframes fadeOut {
+            to { opacity: 0; visibility: hidden; }
+        }
+        
+        .welcome-text {
+            color: white;
+            font-size: 2.5rem;
+            font-weight: 300;
+            text-align: center;
+            letter-spacing: 2px;
+            animation: welcomeAnimation 2.5s ease-out;
+            padding: 0 1rem;
+        }
+        
+        @keyframes welcomeAnimation {
+            0% { opacity: 0; transform: translateY(30px); }
+            40% { opacity: 1; transform: translateY(0); }
+            60% { opacity: 1; transform: translateY(0); }
+            100% { opacity: 0; transform: translateY(-20px); }
+        }
+        
+        .premium-badge {
+            background: linear-gradient(45deg, #333333, #666666);
+            color: white;
+            font-weight: bold;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+        }
+        
+        /* Mobile Optimizations */
+        @media (max-width: 768px) {
+            .welcome-text {
+                font-size: 1.8rem;
+                line-height: 1.3;
+            }
+            
+            .service-card, .barber-card, .plan-card {
+                padding: 1.5rem 1rem;
+                margin-bottom: 0.5rem;
+            }
+            
+            .time-slot {
+                min-height: 52px;
+                font-size: 1rem;
+                font-weight: 600;
+            }
+            
+            .step-indicator {
+                width: 2.5rem;
+                height: 2.5rem;
+                font-size: 0.9rem;
+            }
+            
+            .premium-badge {
+                top: 0.5rem;
+                right: 0.5rem;
+                font-size: 0.7rem;
+                padding: 3px 8px;
+            }
+        }
+        
+        @media (max-width: 640px) {
+            .service-card h3, .barber-card h3 {
+                font-size: 1.1rem;
+            }
+            
+            .service-price {
+                font-size: 1.3rem;
+            }
+            
+            .time-slot {
+                font-size: 0.95rem;
+                min-height: 50px;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Loading Screen -->
+    <div class="loading-screen">
+        <div class="welcome-text">
+            Seja bem-vindo ao App da<br>Barbearia Pedro's
+        </div>
+    </div>
+    <!-- Header -->
+    <div class="gradient-bg text-white py-6 md:py-8">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="text-center">
+                <h1 class="text-2xl md:text-3xl font-bold mb-2">✂️ Barbearia Pedro's</h1>
+                <p class="text-base md:text-lg opacity-90">Agende seu horário de forma rápida e fácil</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="max-w-4xl mx-auto px-4 py-4 md:py-6 hidden">
+        <div class="flex justify-center items-center space-x-1 md:space-x-2 mb-6 md:mb-8">
+            <div class="step-indicator active flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-300 text-gray-600 font-semibold text-sm md:text-base">1</div>
+            <div class="w-6 md:w-12 h-1 bg-gray-300"></div>
+            <div id="step2" class="step-indicator flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-300 text-gray-600 font-semibold text-sm md:text-base">2</div>
+            <div class="w-6 md:w-12 h-1 bg-gray-300"></div>
+            <div id="step3" class="step-indicator flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-300 text-gray-600 font-semibold text-sm md:text-base">3</div>
+            <div class="w-6 md:w-12 h-1 bg-gray-300"></div>
+            <div id="step4" class="step-indicator flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-300 text-gray-600 font-semibold text-sm md:text-base">4</div>
+            <div class="w-6 md:w-12 h-1 bg-gray-300"></div>
+            <div id="step5" class="step-indicator flex items-center justify-center w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-300 text-gray-600 font-semibold text-sm md:text-base">5</div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-4xl mx-auto px-4 pb-8">
+        
+        <!-- Tela de Boas-vindas -->
+        <div id="welcomeScreen" class="elegant-entrance" style="opacity: 0;">
+            <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 mb-6 text-center">
+                <h2 class="text-2xl md:text-3xl font-bold text-gray-800 mb-3 md:mb-4 slide-up" style="opacity: 0;">Para melhor atendê-lo</h2>
+                <h1 class="text-2xl md:text-4xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-6 slide-up" style="opacity: 0;">Selecione uma das opções abaixo</h1>
+                
+                <div class="grid gap-4 md:grid-cols-2 md:gap-6 max-w-2xl mx-auto slide-up" style="opacity: 0;">
+                    <!-- Plano Premium -->
+                    <div class="plan-card premium border-2 border-gray-400 rounded-xl p-6 md:p-8 relative overflow-hidden" data-plan="premium">
+                        <div class="absolute top-2 right-2 md:top-0 md:right-0 premium-badge">PREMIUM</div>
+                        <div class="premium-gradient w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6">
+                            <div class="w-6 h-6 md:w-8 md:h-8 bg-white rounded-full"></div>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">Sou Assinante Premium</h3>
+                        <p class="text-gray-600 text-base md:text-lg">Acesso exclusivo com benefícios especiais</p>
+                    </div>
+                    
+                    <!-- Agendamento Avulso -->
+                    <div class="plan-card border-2 border-gray-300 rounded-xl p-6 md:p-8" data-plan="avulso">
+                        <div class="bg-gradient-to-r from-gray-600 to-gray-800 w-16 h-16 md:w-20 md:h-20 rounded-full flex items-center justify-center mx-auto mb-4 md:mb-6">
+                            <div class="w-6 h-6 md:w-8 md:h-8 bg-white rounded-full"></div>
+                        </div>
+                        <h3 class="text-xl md:text-2xl font-bold text-gray-800 mb-3 md:mb-4">Agendamento Avulso</h3>
+                        <p class="text-gray-600 text-base md:text-lg">Agendamento tradicional com pagamento no local</p>
+                    </div>
+                </div>
+                
+
+            </div>
+        </div>
+
+        <!-- Verificação Premium -->
+        <div id="premiumVerification" class="bg-white rounded-xl shadow-lg p-6 mb-6 hidden fade-in">
+            <div class="text-center">
+                <div class="premium-gradient w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <span class="text-4xl">👑</span>
+                </div>
+                <h2 class="text-2xl font-bold text-gray-800 mb-4">Verificação Premium</h2>
+                <p class="text-gray-600 mb-6">Digite seu telefone cadastrado para acessar os benefícios premium</p>
+                
+                <div class="max-w-md mx-auto">
+                    <input type="tel" id="premiumPhone" class="w-full p-4 border-2 border-gray-400 rounded-lg text-lg focus:border-gray-500 focus:outline-none text-center" placeholder="(11) 99999-9999">
+                    <button id="verifyPremium" class="w-full mt-4 premium-gradient text-white px-6 py-3 rounded-lg font-semibold transition-all hover:shadow-lg">
+                        Verificar Assinatura Premium
+                    </button>
+                </div>
+                
+                <div id="premiumNotFound" class="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 hidden">
+                    <p class="font-semibold">❌ Telefone não encontrado</p>
+                    <p class="text-sm">Este número não está cadastrado como premium. Deseja fazer um agendamento avulso?</p>
+                    <button id="switchToAvulso" class="mt-2 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm">
+                        Continuar como Avulso
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmação Premium -->
+        <div id="premiumWelcome" class="bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl shadow-lg p-6 mb-6 hidden fade-in">
+            <div class="text-center">
+                <div class="text-4xl mb-4">🎉</div>
+                <h2 class="text-2xl font-bold mb-2">Bem-vindo de volta!</h2>
+                <p class="text-lg opacity-90 mb-4">Olá <span id="premiumClientName" class="font-bold">Cliente Premium</span></p>
+                <div class="bg-white bg-opacity-20 rounded-lg p-4 mb-4">
+                    <p class="text-sm"><strong>Seus benefícios ativos:</strong></p>
+                    <p class="text-sm">✅ Agendamento sem cobrança • ✅ Atendimento prioritário • ✅ Histórico completo</p>
+                </div>
+                <p class="text-sm opacity-90">Continue para agendar seu próximo atendimento</p>
+            </div>
+        </div>
+
+        <!-- Step 1: Serviços -->
+        <div id="servicesStep" class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6 hidden">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">Escolha seu serviço</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
+                <div class="service-card border-2 border-gray-200 rounded-lg p-4" data-service="Corte Simples" data-price="25" data-duration="30">
+                    <div class="text-center">
+                        <h3 class="font-semibold text-lg mb-2">Corte Simples</h3>
+                        <p class="text-gray-600 text-sm mb-2">Corte tradicional</p>
+                        <p class="service-price text-xl font-bold text-gray-800">R$ 25,00</p>
+                        <p class="text-sm text-gray-500">30 min</p>
+                    </div>
+                </div>
+                
+                <div class="service-card border-2 border-gray-200 rounded-lg p-4" data-service="Corte + Barba" data-price="40" data-duration="45">
+                    <div class="text-center">
+                        <h3 class="font-semibold text-lg mb-2">Corte + Barba</h3>
+                        <p class="text-gray-600 text-sm mb-2">Corte completo com barba</p>
+                        <p class="service-price text-xl font-bold text-gray-800">R$ 40,00</p>
+                        <p class="text-sm text-gray-500">45 min</p>
+                    </div>
+                </div>
+                
+                <div class="service-card border-2 border-gray-200 rounded-lg p-4" data-service="Barba" data-price="20" data-duration="25">
+                    <div class="text-center">
+                        <h3 class="font-semibold text-lg mb-2">Barba</h3>
+                        <p class="text-gray-600 text-sm mb-2">Apenas barba</p>
+                        <p class="service-price text-xl font-bold text-gray-800">R$ 20,00</p>
+                        <p class="text-sm text-gray-500">25 min</p>
+                    </div>
+                </div>
+                
+                <div class="service-card border-2 border-gray-200 rounded-lg p-4" data-service="Corte Premium" data-price="50" data-duration="60">
+                    <div class="text-center">
+                        <h3 class="font-semibold text-lg mb-2">Corte Premium</h3>
+                        <p class="text-gray-600 text-sm mb-2">Corte + barba + acabamento</p>
+                        <p class="service-price text-xl font-bold text-gray-800">R$ 50,00</p>
+                        <p class="text-sm text-gray-500">60 min</p>
+                    </div>
+                </div>
+                
+                <div class="service-card border-2 border-gray-200 rounded-lg p-4" data-service="Sobrancelha" data-price="15" data-duration="20">
+                    <div class="text-center">
+                        <h3 class="font-semibold text-lg mb-2">Sobrancelha</h3>
+                        <p class="text-gray-600 text-sm mb-2">Design de sobrancelha</p>
+                        <p class="service-price text-xl font-bold text-gray-800">R$ 15,00</p>
+                        <p class="text-sm text-gray-500">20 min</p>
+                    </div>
+                </div>
+                
+                <div class="service-card border-2 border-gray-200 rounded-lg p-4" data-service="Relaxamento" data-price="35" data-duration="40">
+                    <div class="text-center">
+                        <h3 class="font-semibold text-lg mb-2">Relaxamento</h3>
+                        <p class="text-gray-600 text-sm mb-2">Tratamento capilar</p>
+                        <p class="service-price text-xl font-bold text-gray-800">R$ 35,00</p>
+                        <p class="text-sm text-gray-500">40 min</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 2: Barbeiros -->
+        <div id="barbersStep" class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6 hidden">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">Escolha seu barbeiro</h2>
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 md:gap-4">
+                <div class="barber-card border-2 border-gray-200 rounded-lg p-3 md:p-4" data-barber="Carlos Silva" data-specialty="Especialista em cortes clássicos">
+                    <div class="text-center">
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-gray-800 to-gray-600 rounded-full flex items-center justify-center text-white text-lg md:text-2xl font-bold mx-auto mb-2 md:mb-3">CS</div>
+                        <h3 class="font-semibold text-sm md:text-lg">Carlos Silva</h3>
+                    </div>
+                </div>
+                
+                <div class="barber-card border-2 border-gray-200 rounded-lg p-3 md:p-4" data-barber="João Santos" data-specialty="Expert em barbas e bigodes">
+                    <div class="text-center">
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-gray-800 to-gray-600 rounded-full flex items-center justify-center text-white text-lg md:text-2xl font-bold mx-auto mb-2 md:mb-3">JS</div>
+                        <h3 class="font-semibold text-sm md:text-lg">João Santos</h3>
+                    </div>
+                </div>
+                
+                <div class="barber-card border-2 border-gray-200 rounded-lg p-3 md:p-4" data-barber="Pedro Lima" data-specialty="Cortes modernos e degradês">
+                    <div class="text-center">
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-gray-800 to-gray-600 rounded-full flex items-center justify-center text-white text-lg md:text-2xl font-bold mx-auto mb-2 md:mb-3">PL</div>
+                        <h3 class="font-semibold text-sm md:text-lg">Pedro Lima</h3>
+                    </div>
+                </div>
+                
+                <div class="barber-card border-2 border-gray-200 rounded-lg p-3 md:p-4" data-barber="Rafael Costa" data-specialty="Especialista em relaxamento">
+                    <div class="text-center">
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-gray-800 to-gray-600 rounded-full flex items-center justify-center text-white text-lg md:text-2xl font-bold mx-auto mb-2 md:mb-3">RC</div>
+                        <h3 class="font-semibold text-sm md:text-lg">Rafael Costa</h3>
+                    </div>
+                </div>
+                
+                <div class="barber-card border-2 border-gray-200 rounded-lg p-3 md:p-4" data-barber="Lucas Oliveira" data-specialty="Design de sobrancelhas">
+                    <div class="text-center">
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-gray-800 to-gray-600 rounded-full flex items-center justify-center text-white text-lg md:text-2xl font-bold mx-auto mb-2 md:mb-3">LO</div>
+                        <h3 class="font-semibold text-sm md:text-lg">Lucas Oliveira</h3>
+                    </div>
+                </div>
+                
+                <div class="barber-card border-2 border-gray-200 rounded-lg p-3 md:p-4" data-barber="André Ferreira" data-specialty="Cortes premium e estilização">
+                    <div class="text-center">
+                        <div class="w-12 h-12 md:w-16 md:h-16 bg-gradient-to-r from-gray-800 to-gray-600 rounded-full flex items-center justify-center text-white text-lg md:text-2xl font-bold mx-auto mb-2 md:mb-3">AF</div>
+                        <h3 class="font-semibold text-sm md:text-lg">André Ferreira</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Data -->
+        <div id="dateStep" class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6 hidden">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">Escolha a data</h2>
+            <div class="max-w-md mx-auto">
+                <input type="date" id="dateInput" class="w-full p-3 md:p-4 border-2 border-gray-300 rounded-lg text-base md:text-lg focus:border-purple-500 focus:outline-none">
+            </div>
+        </div>
+
+        <!-- Step 4: Horário -->
+        <div id="timeStep" class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6 hidden">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">Escolha o horário</h2>
+            <div id="timeSlots" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 md:gap-3">
+                <!-- Horários serão gerados dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Step 5: Dados do Cliente -->
+        <div id="clientStep" class="bg-white rounded-xl shadow-lg p-4 md:p-6 mb-6 hidden">
+            <h2 class="text-xl md:text-2xl font-bold text-gray-800 mb-4 md:mb-6 text-center">Seus dados</h2>
+            <div class="max-w-md mx-auto space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Nome completo</label>
+                    <input type="text" id="clientName" class="w-full p-3 md:p-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-base" placeholder="Digite seu nome">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">WhatsApp</label>
+                    <input type="tel" id="clientPhone" class="w-full p-3 md:p-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-base" placeholder="(11) 99999-9999">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Observações (opcional)</label>
+                    <textarea id="clientNotes" class="w-full p-3 md:p-4 border-2 border-gray-300 rounded-lg focus:border-purple-500 focus:outline-none text-base" rows="3" placeholder="Alguma observação especial?"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Resumo do Agendamento -->
+        <div id="summaryCard" class="bg-gradient-to-r from-gray-700 to-gray-900 text-white rounded-xl shadow-lg p-6 mb-6 hidden">
+            <h3 class="text-xl font-bold mb-4">📋 Resumo do Agendamento</h3>
+            <div class="space-y-2">
+                <p><span class="font-semibold">Serviço:</span> <span id="summaryService">-</span></p>
+                <p><span class="font-semibold">Barbeiro:</span> <span id="summaryBarber">-</span></p>
+                <p><span class="font-semibold">Data:</span> <span id="summaryDate">-</span></p>
+                <p><span class="font-semibold">Horário:</span> <span id="summaryTime">-</span></p>
+                <p id="summaryPriceRow"><span class="font-semibold">Valor:</span> <span id="summaryPrice">-</span></p>
+            </div>
+        </div>
+
+        <!-- Botões de Navegação -->
+        <div class="flex justify-between items-center gap-3">
+            <button id="prevBtn" class="bg-gray-500 hover:bg-gray-600 text-white px-4 md:px-6 py-3 rounded-lg font-semibold transition-colors hidden text-sm md:text-base">
+                ← Voltar
+            </button>
+            <button id="nextBtn" class="bg-gradient-to-r from-gray-800 to-gray-600 hover:from-gray-900 hover:to-gray-700 text-white px-6 md:px-8 py-3 rounded-lg font-semibold transition-all ml-auto text-sm md:text-base">
+                Continuar →
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal de Confirmação -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+            <div class="text-center">
+                <div class="text-6xl mb-4">✅</div>
+                <h3 class="text-2xl font-bold text-gray-800 mb-4">Agendamento Confirmado!</h3>
+                <p class="text-gray-600 mb-6">Seu horário foi agendado com sucesso. Você receberá uma confirmação no WhatsApp.</p>
+                <div class="bg-gray-50 rounded-lg p-4 mb-6 text-left">
+                    <p class="text-sm text-gray-600 mb-2"><strong>Detalhes do agendamento:</strong></p>
+                    <p class="text-sm"><strong>Serviço:</strong> <span id="confirmService">-</span></p>
+                    <p class="text-sm"><strong>Barbeiro:</strong> <span id="confirmBarber">-</span></p>
+                    <p class="text-sm"><strong>Data:</strong> <span id="confirmDate">-</span></p>
+                    <p class="text-sm"><strong>Horário:</strong> <span id="confirmTime">-</span></p>
+                    <p class="text-sm"><strong>Valor:</strong> <span id="confirmPrice">-</span></p>
+                </div>
+                <button onclick="closeModal()" class="bg-gradient-to-r from-gray-800 to-gray-600 hover:from-gray-900 hover:to-gray-700 text-white px-8 py-3 rounded-lg font-semibold transition-all w-full">
+                    Fechar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentStep = 0; // Começar na tela de boas-vindas
+        let selectedPlan = null;
+        let selectedService = null;
+        let selectedBarber = null;
+        let selectedDate = null;
+        let selectedTime = null;
+        let isPremiumClient = false;
+        let premiumClientData = null;
+        let appointmentData = {};
+
+        // Horários disponíveis
+        const availableSlots = [
+            '08:00', '08:30', '09:00', '09:30', '10:00', '10:30',
+            '11:00', '11:30', '13:00', '13:30', '14:00', '14:30',
+            '15:00', '15:30', '16:00', '16:30', '17:00', '17:30'
+        ];
+
+        // Configurar data mínima (hoje)
+        document.getElementById('dateInput').min = new Date().toISOString().split('T')[0];
+
+        // Event Listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            setupWelcomeScreen();
+            setupPremiumVerification();
+            setupServiceSelection();
+            setupBarberSelection();
+            setupDateSelection();
+            setupNavigation();
+        });
+
+        function setupWelcomeScreen() {
+            const planCards = document.querySelectorAll('.plan-card');
+            
+            planCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    planCards.forEach(c => c.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedPlan = this.dataset.plan;
+                    
+                    // Avançar automaticamente após seleção
+                    setTimeout(() => {
+                        if (selectedPlan === 'premium') {
+                            showPremiumVerification();
+                        } else {
+                            isPremiumClient = false;
+                            startBookingFlow();
+                        }
+                    }, 500);
+                });
+            });
+        }
+
+        function setupPremiumVerification() {
+            const verifyButton = document.getElementById('verifyPremium');
+            const phoneInput = document.getElementById('premiumPhone');
+            const switchButton = document.getElementById('switchToAvulso');
+            
+            verifyButton.addEventListener('click', function() {
+                const phone = phoneInput.value.trim();
+                if (!phone) {
+                    alert('Por favor, digite seu telefone');
+                    return;
+                }
+                
+                // Simular busca de cliente premium (integração com dados da ferramenta)
+                const premiumClient = findPremiumClient(phone);
+                
+                if (premiumClient) {
+                    isPremiumClient = true;
+                    premiumClientData = premiumClient;
+                    showPremiumWelcome(premiumClient);
+                } else {
+                    document.getElementById('premiumNotFound').classList.remove('hidden');
+                }
+            });
+            
+            switchButton.addEventListener('click', function() {
+                isPremiumClient = false;
+                selectedPlan = 'avulso';
+                startBookingFlow();
+            });
+            
+            // Máscara para telefone premium
+            phoneInput.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                value = value.replace(/^(\d{2})(\d)/g, '($1) $2');
+                value = value.replace(/(\d)(\d{4})$/, '$1-$2');
+                e.target.value = value;
+            });
+        }
+
+        function findPremiumClient(phone) {
+            // Buscar na base de clientes da ferramenta de gestão
+            const clients = JSON.parse(localStorage.getItem('barbershopClients') || '[]');
+            return clients.find(client => 
+                client.phone === phone && client.isPremium === true
+            );
+        }
+
+        function showPremiumVerification() {
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            document.getElementById('premiumVerification').classList.remove('hidden');
+            // Mostrar botão voltar na verificação premium
+            document.getElementById('prevBtn').classList.remove('hidden');
+        }
+
+        function showPremiumWelcome(client) {
+            document.getElementById('premiumVerification').classList.add('hidden');
+            document.getElementById('premiumWelcome').classList.remove('hidden');
+            document.getElementById('premiumClientName').textContent = client.name;
+            
+            setTimeout(() => {
+                startBookingFlow();
+            }, 3000);
+        }
+
+        function startBookingFlow() {
+            // Esconder telas iniciais
+            document.getElementById('welcomeScreen').classList.add('hidden');
+            document.getElementById('premiumVerification').classList.add('hidden');
+            document.getElementById('premiumWelcome').classList.add('hidden');
+            
+            // Mostrar indicadores de progresso
+            document.querySelector('.max-w-4xl.mx-auto.px-4.py-6').classList.remove('hidden');
+            
+            // Configurar preços baseado no tipo de cliente
+            if (isPremiumClient) {
+                // Esconder preços para clientes premium
+                document.querySelectorAll('.service-price').forEach(price => {
+                    price.style.display = 'none';
+                });
+                document.getElementById('summaryPriceRow').style.display = 'none';
+            }
+            
+            currentStep = 1;
+            updateStepDisplay();
+        }
+
+        function setupServiceSelection() {
+            const serviceCards = document.querySelectorAll('.service-card');
+            serviceCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // Remove seleção anterior
+                    serviceCards.forEach(c => c.classList.remove('selected'));
+                    
+                    // Adiciona seleção atual
+                    this.classList.add('selected');
+                    
+                    selectedService = {
+                        name: this.dataset.service,
+                        price: parseFloat(this.dataset.price),
+                        duration: parseInt(this.dataset.duration)
+                    };
+                    
+                    updateSummary();
+                    document.getElementById('nextBtn').disabled = false;
+                });
+            });
+        }
+
+        function setupBarberSelection() {
+            const barberCards = document.querySelectorAll('.barber-card');
+            barberCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // Remove seleção anterior
+                    barberCards.forEach(c => c.classList.remove('selected'));
+                    
+                    // Adiciona seleção atual
+                    this.classList.add('selected');
+                    
+                    selectedBarber = {
+                        name: this.dataset.barber,
+                        specialty: this.dataset.specialty
+                    };
+                    
+                    updateSummary();
+                    document.getElementById('nextBtn').disabled = false;
+                });
+            });
+        }
+
+        function setupDateSelection() {
+            document.getElementById('dateInput').addEventListener('change', function() {
+                selectedDate = this.value;
+                generateTimeSlots();
+                updateSummary();
+            });
+        }
+
+        function generateTimeSlots() {
+            const timeSlotsContainer = document.getElementById('timeSlots');
+            timeSlotsContainer.innerHTML = '';
+            
+            // Buscar horários ocupados para o barbeiro específico
+            const occupiedSlots = getOccupiedSlots(selectedDate, selectedBarber.name);
+            
+            availableSlots.forEach(slot => {
+                const timeSlot = document.createElement('div');
+                timeSlot.className = 'time-slot border-2 border-gray-300 rounded-lg p-3 text-center font-semibold';
+                timeSlot.textContent = slot;
+                
+                if (occupiedSlots.includes(slot)) {
+                    timeSlot.classList.add('unavailable');
+                    timeSlot.textContent += ' (Ocupado)';
+                } else {
+                    timeSlot.addEventListener('click', function() {
+                        document.querySelectorAll('.time-slot').forEach(t => t.classList.remove('selected'));
+                        this.classList.add('selected');
+                        selectedTime = slot;
+                        updateSummary();
+                    });
+                }
+                
+                timeSlotsContainer.appendChild(timeSlot);
+            });
+        }
+
+        function getOccupiedSlots(date, barberName) {
+            // Buscar agendamentos existentes do localStorage para o barbeiro específico
+            const appointments = JSON.parse(localStorage.getItem('barbershopAppointments') || '[]');
+            return appointments
+                .filter(apt => apt.date === date && apt.barber === barberName)
+                .map(apt => apt.time);
+        }
+
+        function setupNavigation() {
+            document.getElementById('nextBtn').addEventListener('click', nextStep);
+            document.getElementById('prevBtn').addEventListener('click', prevStep);
+        }
+
+        function nextStep() {
+            if (currentStep === 1 && !selectedService) {
+                alert('Por favor, selecione um serviço');
+                return;
+            }
+            
+            if (currentStep === 2 && !selectedBarber) {
+                alert('Por favor, selecione um barbeiro');
+                return;
+            }
+            
+            if (currentStep === 3 && !selectedDate) {
+                alert('Por favor, selecione uma data');
+                return;
+            }
+            
+            if (currentStep === 4 && !selectedTime) {
+                alert('Por favor, selecione um horário');
+                return;
+            }
+            
+            if (currentStep === 5) {
+                const name = document.getElementById('clientName').value.trim();
+                const phone = document.getElementById('clientPhone').value.trim();
+                
+                if (!name || !phone) {
+                    alert('Por favor, preencha nome e telefone');
+                    return;
+                }
+                
+                confirmAppointment();
+                return;
+            }
+            
+            currentStep++;
+            updateStepDisplay();
+        }
+
+        function prevStep() {
+            // Se estiver na verificação premium, voltar para seleção de planos
+            if (document.getElementById('premiumVerification').classList.contains('hidden') === false) {
+                returnToPlanSelection();
+                return;
+            }
+            
+            if (currentStep > 1) {
+                currentStep--;
+                updateStepDisplay();
+            } else if (currentStep === 1) {
+                // Voltar para a tela de seleção de planos
+                returnToPlanSelection();
+            }
+        }
+
+        function returnToPlanSelection() {
+            // Esconder todas as telas do fluxo de agendamento
+            document.querySelectorAll('[id$="Step"]').forEach(step => step.classList.add('hidden'));
+            document.getElementById('summaryCard').classList.add('hidden');
+            document.querySelector('.max-w-4xl.mx-auto.px-4.py-6').classList.add('hidden');
+            document.getElementById('premiumVerification').classList.add('hidden');
+            document.getElementById('premiumWelcome').classList.add('hidden');
+            
+            // Resetar variáveis
+            currentStep = 0;
+            selectedPlan = null;
+            selectedService = null;
+            selectedBarber = null;
+            selectedDate = null;
+            selectedTime = null;
+            isPremiumClient = false;
+            premiumClientData = null;
+            
+            // Limpar seleções visuais
+            document.querySelectorAll('.plan-card').forEach(card => card.classList.remove('selected'));
+            document.querySelectorAll('.service-card').forEach(card => card.classList.remove('selected'));
+            document.querySelectorAll('.barber-card').forEach(card => card.classList.remove('selected'));
+            document.querySelectorAll('.time-slot').forEach(slot => slot.classList.remove('selected'));
+            
+            // Mostrar tela de boas-vindas novamente e esconder botão voltar
+            document.getElementById('welcomeScreen').classList.remove('hidden');
+            document.getElementById('prevBtn').classList.add('hidden');
+            
+            // Resetar campos de formulário
+            document.getElementById('dateInput').value = '';
+            document.getElementById('clientName').value = '';
+            document.getElementById('clientPhone').value = '';
+            document.getElementById('clientNotes').value = '';
+            document.getElementById('premiumPhone').value = '';
+            document.getElementById('premiumNotFound').classList.add('hidden');
+            
+            // Restaurar preços se estavam escondidos
+            document.querySelectorAll('.service-price').forEach(price => {
+                price.style.display = 'block';
+            });
+            document.getElementById('summaryPriceRow').style.display = 'block';
+        }
+
+        function updateStepDisplay() {
+            // Esconder todos os steps
+            document.querySelectorAll('[id$="Step"]').forEach(step => step.classList.add('hidden'));
+            
+            // Mostrar step atual
+            const steps = ['servicesStep', 'barbersStep', 'dateStep', 'timeStep', 'clientStep'];
+            document.getElementById(steps[currentStep - 1]).classList.remove('hidden');
+            
+            // Atualizar indicadores
+            document.querySelectorAll('.step-indicator').forEach((indicator, index) => {
+                indicator.classList.remove('active', 'completed');
+                if (index + 1 < currentStep) {
+                    indicator.classList.add('completed');
+                } else if (index + 1 === currentStep) {
+                    indicator.classList.add('active');
+                }
+            });
+            
+            // Atualizar botões - sempre mostrar o botão voltar quando estiver no fluxo de agendamento
+            document.getElementById('prevBtn').classList.remove('hidden');
+            document.getElementById('nextBtn').textContent = currentStep === 5 ? 'Confirmar Agendamento' : 'Continuar →';
+            
+            // Mostrar resumo a partir do step 2
+            document.getElementById('summaryCard').classList.toggle('hidden', currentStep === 1);
+        }
+
+        function updateSummary() {
+            if (selectedService) {
+                document.getElementById('summaryService').textContent = selectedService.name;
+                document.getElementById('summaryPrice').textContent = `R$ ${selectedService.price.toFixed(2)}`;
+            }
+            
+            if (selectedBarber) {
+                document.getElementById('summaryBarber').textContent = selectedBarber.name;
+            }
+            
+            if (selectedDate) {
+                const date = new Date(selectedDate + 'T00:00:00');
+                document.getElementById('summaryDate').textContent = date.toLocaleDateString('pt-BR');
+            }
+            
+            if (selectedTime) {
+                document.getElementById('summaryTime').textContent = selectedTime;
+            }
+        }
+
+        function confirmAppointment() {
+            let clientName, clientPhone, notes;
+            
+            if (isPremiumClient) {
+                // Para clientes premium, usar dados já cadastrados
+                clientName = premiumClientData.name;
+                clientPhone = premiumClientData.phone;
+                notes = 'Cliente Premium - Agendamento via app';
+            } else {
+                // Para clientes avulsos, pegar dados do formulário
+                clientName = document.getElementById('clientName').value.trim();
+                clientPhone = document.getElementById('clientPhone').value.trim();
+                notes = document.getElementById('clientNotes').value.trim();
+            }
+            
+            const appointmentData = {
+                id: Date.now().toString(),
+                service: selectedService.name,
+                price: isPremiumClient ? 0 : selectedService.price, // Premium não paga
+                duration: selectedService.duration,
+                barber: selectedBarber.name,
+                barberSpecialty: selectedBarber.specialty,
+                date: selectedDate,
+                time: selectedTime,
+                clientName: clientName,
+                clientPhone: clientPhone,
+                notes: notes,
+                status: 'agendado',
+                isPremium: isPremiumClient,
+                clientId: isPremiumClient ? premiumClientData.id : null,
+                createdAt: new Date().toISOString()
+            };
+            
+            // Salvar no localStorage
+            const appointments = JSON.parse(localStorage.getItem('barbershopAppointments') || '[]');
+            appointments.push(appointmentData);
+            localStorage.setItem('barbershopAppointments', JSON.stringify(appointments));
+            
+            // Se for cliente premium, atualizar histórico
+            if (isPremiumClient) {
+                updatePremiumClientHistory(appointmentData);
+            }
+            
+            // Mostrar modal de confirmação
+            document.getElementById('confirmService').textContent = appointmentData.service;
+            document.getElementById('confirmBarber').textContent = appointmentData.barber;
+            document.getElementById('confirmDate').textContent = new Date(appointmentData.date + 'T00:00:00').toLocaleDateString('pt-BR');
+            document.getElementById('confirmTime').textContent = appointmentData.time;
+            
+            if (isPremiumClient) {
+                document.getElementById('confirmPrice').textContent = 'Incluído na assinatura';
+            } else {
+                document.getElementById('confirmPrice').textContent = `R$ ${appointmentData.price.toFixed(2)}`;
+            }
+            
+            document.getElementById('confirmModal').classList.remove('hidden');
+        }
+
+        function updatePremiumClientHistory(appointment) {
+            // Atualizar histórico do cliente premium
+            const clients = JSON.parse(localStorage.getItem('barbershopClients') || '[]');
+            const clientIndex = clients.findIndex(c => c.id === premiumClientData.id);
+            
+            if (clientIndex !== -1) {
+                if (!clients[clientIndex].appointmentHistory) {
+                    clients[clientIndex].appointmentHistory = [];
+                }
+                
+                clients[clientIndex].appointmentHistory.push({
+                    date: appointment.date,
+                    time: appointment.time,
+                    service: appointment.service,
+                    barber: appointment.barber,
+                    status: 'agendado'
+                });
+                
+                // Incrementar contador de visitas
+                clients[clientIndex].totalVisits = (clients[clientIndex].totalVisits || 0) + 1;
+                
+                localStorage.setItem('barbershopClients', JSON.stringify(clients));
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('confirmModal').classList.add('hidden');
+            // Resetar formulário
+            location.reload();
+        }
+
+        // Máscara para telefone
+        document.getElementById('clientPhone').addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '');
+            value = value.replace(/^(\d{2})(\d)/g, '($1) $2');
+            value = value.replace(/(\d)(\d{4})$/, '$1-$2');
+            e.target.value = value;
+        });
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9792262fe6fbd986',t:'MTc1Njg3MDAyMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
