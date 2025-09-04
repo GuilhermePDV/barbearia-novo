@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Barbearia Pedro's - Multi-usuário</title>
+    <title>Sistema Barbearia Pedro's - Planos Personalizados</title>
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Firebase SDK v9 -->
@@ -253,9 +253,6 @@
             transform: translateY(-1px);
         }
         
-
-
-        
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -356,6 +353,7 @@
         .data-table td {
             padding: 1rem;
             border-bottom: 1px solid #e5e7eb;
+            vertical-align: top;
         }
         
         .data-table tr:hover {
@@ -374,6 +372,10 @@
         .status-confirmado { background: #fef3c7; color: #92400e; }
         .status-concluido { background: #d1fae5; color: #065f46; }
         .status-cancelado { background: #fee2e2; color: #dc2626; }
+        
+        .payment-status-em_dia { background: #d1fae5; color: #065f46; }
+        .payment-status-vencido { background: #fef3c7; color: #92400e; }
+        .payment-status-inadimplente { background: #fee2e2; color: #dc2626; }
         
         .tipo-badge {
             padding: 0.25rem 0.75rem;
@@ -415,6 +417,7 @@
         .btn-delete { background: #ef4444; color: white; }
         .btn-complete { background: #10b981; color: white; }
         .btn-confirm { background: #3b82f6; color: white; }
+        .btn-payment { background: #8b5cf6; color: white; }
         
         .modal {
             position: fixed;
@@ -433,7 +436,7 @@
             background: white;
             border-radius: 20px;
             padding: 2rem;
-            max-width: 500px;
+            max-width: 600px;
             width: 90%;
             max-height: 90vh;
             overflow-y: auto;
@@ -495,28 +498,59 @@
             margin: 1rem 0;
         }
 
-        .client-visits {
+        .client-plan-info {
             background: #f8fafc;
             border-radius: 8px;
-            padding: 0.75rem;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .plan-services {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
             margin-top: 0.5rem;
         }
 
-        .visit-counter {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            color: #64748b;
-        }
-
-        .visit-badge {
+        .service-badge {
             background: #667eea;
             color: white;
             padding: 0.25rem 0.5rem;
             border-radius: 12px;
             font-size: 0.75rem;
-            font-weight: 600;
+            font-weight: 500;
+        }
+
+        .usage-progress {
+            background: #e5e7eb;
+            border-radius: 10px;
+            height: 8px;
+            margin: 0.5rem 0;
+            overflow: hidden;
+        }
+
+        .usage-progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+        }
+
+        .plan-builder {
+            border: 2px dashed #e5e7eb;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+
+        .service-selector {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 1rem;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background: #f8fafc;
+            border-radius: 8px;
         }
 
         .admin-view {
@@ -575,6 +609,7 @@
             .login-card { max-width: 400px; }
             .user-selector { grid-template-columns: 1fr; }
             .login-header h1 { font-size: 2rem; }
+            .service-selector { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -619,8 +654,6 @@
             </div>
         </div>
 
-
-
         <!-- Visão Admin -->
         <div id="adminView" class="admin-view hidden">
             <h2>👑 Visão Administrativa - Todos os Barbeiros</h2>
@@ -635,7 +668,6 @@
             <button class="nav-tab" onclick="showSection('servicos')">✂️ Serviços</button>
             <button class="nav-tab" onclick="showSection('financeiro')">💰 Financeiro</button>
             <button class="nav-tab admin-only hidden" onclick="showSection('barbeiros')">💇‍♂️ Barbeiros</button>
-
         </div>
 
         <!-- Dashboard -->
@@ -766,7 +798,7 @@
         <!-- Seção de Clientes -->
         <div id="clientesSection" class="section hidden">
             <div class="section-header">
-                <h2>👥 Clientes</h2>
+                <h2>👥 Clientes & Planos Personalizados</h2>
                 <div class="header-actions">
                     <button onclick="refreshClientes()" class="btn-secondary">🔄 Atualizar</button>
                     <button onclick="showAddClienteModal()" class="btn-primary">+ Novo Cliente de Plano</button>
@@ -780,18 +812,22 @@
                     <option value="plano">Clientes de Plano</option>
                     <option value="avulso">Clientes Avulsos</option>
                 </select>
+                <select id="filterStatusPagamento" class="filter-input" onchange="filterClientes()">
+                    <option value="">Todos os status</option>
+                    <option value="em_dia">Em Dia</option>
+                    <option value="vencido">Vencido</option>
+                    <option value="inadimplente">Inadimplente</option>
+                </select>
             </div>
             
             <div class="table-container">
                 <table class="data-table">
                     <thead>
                         <tr>
-                            <th>Nome</th>
-                            <th>Telefone</th>
-                            <th>Tipo</th>
-                            <th>Visitas no Mês</th>
-                            <th>Total Gasto</th>
-                            <th>Último Atendimento</th>
+                            <th>Cliente & Plano</th>
+                            <th>Status Pagamento</th>
+                            <th>Uso do Mês</th>
+                            <th>Próximo Vencimento</th>
                             <th>Ações</th>
                         </tr>
                     </thead>
@@ -963,11 +999,11 @@
         </div>
     </div>
 
-    <!-- Modal Cliente -->
+    <!-- Modal Cliente com Plano Personalizado -->
     <div id="clienteModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
-                <h3 class="modal-title">Novo Cliente de Plano</h3>
+                <h3 class="modal-title">Novo Cliente de Plano Personalizado</h3>
                 <button class="close-btn" onclick="closeModal('clienteModal')">&times;</button>
             </div>
             <form id="clienteForm">
@@ -980,21 +1016,76 @@
                         <label>Telefone</label>
                         <input type="tel" id="clienteTelefone" class="form-input" required>
                     </div>
+                </div>
+
+                <!-- Construtor de Plano Personalizado -->
+                <div class="plan-builder">
+                    <h4 style="margin-bottom: 1rem; font-weight: 600;">🎯 Monte o Plano Personalizado</h4>
+                    <p style="color: #64748b; margin-bottom: 1rem;">Adicione os serviços e quantidades que o cliente deseja no plano mensal:</p>
+                    
+                    <div id="planServices">
+                        <!-- Serviços do plano serão adicionados aqui -->
+                    </div>
+                    
+                    <button type="button" onclick="addServiceToPlan()" class="btn-secondary" style="margin-bottom: 1rem;">
+                        + Adicionar Serviço ao Plano
+                    </button>
+                    
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>Valor Mensal Total</label>
+                            <input type="number" id="clienteValorMensal" class="form-input" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Data de Vencimento</label>
+                            <input type="date" id="clienteVencimento" class="form-input" required>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Observações</label>
+                    <textarea id="clienteObservacoes" class="form-input" rows="3"></textarea>
+                </div>
+                
+                <div style="margin-top: 2rem;">
+                    <button type="submit" class="btn-primary">Salvar Cliente e Plano</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Pagamento -->
+    <div id="pagamentoModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Registrar Pagamento</h3>
+                <button class="close-btn" onclick="closeModal('pagamentoModal')">&times;</button>
+            </div>
+            <div id="pagamentoClienteInfo" class="client-plan-info">
+                <!-- Info do cliente será carregada aqui -->
+            </div>
+            <form id="pagamentoForm">
+                <div class="form-grid">
                     <div class="form-group">
-                        <label>Tipo de Plano</label>
-                        <select id="clientePlano" class="form-input" required>
-                            <option value="mensal">Plano Mensal</option>
-                            <option value="quinzenal">Plano Quinzenal</option>
-                            <option value="semanal">Plano Semanal</option>
-                        </select>
+                        <label>Data do Pagamento</label>
+                        <input type="date" id="pagamentoData" class="form-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Valor Pago</label>
+                        <input type="number" id="pagamentoValor" class="form-input" step="0.01" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Próximo Vencimento</label>
+                        <input type="date" id="pagamentoProximoVencimento" class="form-input" required>
                     </div>
                     <div class="form-group">
                         <label>Observações</label>
-                        <textarea id="clienteObservacoes" class="form-input" rows="3"></textarea>
+                        <textarea id="pagamentoObservacoes" class="form-input" rows="3"></textarea>
                     </div>
                 </div>
                 <div style="margin-top: 2rem;">
-                    <button type="submit" class="btn-primary">Salvar Cliente</button>
+                    <button type="submit" class="btn-primary">Confirmar Pagamento</button>
                 </div>
             </form>
         </div>
@@ -1084,6 +1175,7 @@
         let servicos = [];
         let barbeiros = [];
         let selectedUserId = null;
+        let currentClienteId = null; // Para modal de pagamento
 
         // Usuários do sistema
         const systemUsers = [
@@ -1126,7 +1218,7 @@
 
         // Inicialização
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Iniciando sistema multi-usuário...');
+            console.log('🚀 Iniciando sistema com planos personalizados...');
             loadUserSelector();
             setupEventListeners();
             
@@ -1136,7 +1228,16 @@
             document.getElementById('filterDate').value = today;
             document.getElementById('financeiroDataInicio').value = today;
             document.getElementById('financeiroDataFim').value = today;
+            document.getElementById('clienteVencimento').value = getNextMonthDate();
+            document.getElementById('pagamentoData').value = today;
         });
+
+        // Obter data do próximo mês
+        function getNextMonthDate() {
+            const date = new Date();
+            date.setMonth(date.getMonth() + 1);
+            return date.toISOString().split('T')[0];
+        }
 
         // Carregar seletor de usuários
         function loadUserSelector() {
@@ -1238,20 +1339,6 @@
         async function loadInitialData() {
             try {
                 console.log('📊 Carregando dados iniciais...');
-                console.log('🔍 Verificando conexão com Firebase...');
-                
-                // Testar conexão com Firebase
-                const testSnapshot = await db.collection('appointments').limit(1).get();
-                console.log('🔥 Firebase conectado! Documentos encontrados:', testSnapshot.size);
-                
-                // Listar todas as coleções para debug
-                const collections = ['appointments', 'clients', 'services', 'barbers'];
-                for (const collectionName of collections) {
-                    const snapshot = await db.collection(collectionName).get();
-                    console.log(`📁 Coleção ${collectionName}: ${snapshot.size} documentos`);
-                    
-
-                }
                 
                 await Promise.all([
                     loadAgendamentos(),
@@ -1266,7 +1353,6 @@
                 console.log('✅ Dados carregados com sucesso');
             } catch (error) {
                 console.error('❌ Erro ao carregar dados:', error);
-                console.error('🔍 Detalhes do erro:', error.message);
                 showError('Erro ao carregar dados do sistema');
             }
         }
@@ -1276,17 +1362,13 @@
             try {
                 console.log('🔄 Carregando agendamentos do Firebase...');
                 
-                // Carregar todos os agendamentos primeiro
                 const snapshot = await db.collection('appointments').get();
                 let allAgendamentos = snapshot.docs.map(doc => {
                     const data = doc.data();
-                    console.log('📄 Agendamento bruto:', data);
                     
-                    // Normalizar campos para compatibilidade com diferentes estruturas
-                    const normalized = {
+                    return {
                         id: doc.id,
                         ...data,
-                        // Campos principais - tentar diferentes variações
                         name: data.name || data.clientName || data.cliente || data.nomeCliente,
                         phone: data.phone || data.clientPhone || data.telefone || data.telefoneCliente,
                         service: data.service || data.servico || data.serviceName || data.nomeServico,
@@ -1300,27 +1382,18 @@
                         createdAt: data.createdAt || data.criadoEm || data.timestamp || new Date().toISOString(),
                         notes: data.notes || data.observacoes || data.obs || ''
                     };
-                    
-                    console.log('📄 Agendamento normalizado:', normalized);
-                    return normalized;
                 });
-                
-                console.log(`📊 Total de agendamentos encontrados: ${allAgendamentos.length}`);
                 
                 // Filtrar por barbeiro se não for admin
                 if (currentUser.role !== 'admin') {
-                    const beforeFilter = allAgendamentos.length;
                     agendamentos = allAgendamentos.filter(a => {
-                        const matchesBarber = a.barber === currentUser.name || 
-                                            a.barbeiro === currentUser.name ||
-                                            a.barberName === currentUser.name ||
-                                            a.nomeBarbeiro === currentUser.name;
-                        return matchesBarber;
+                        return a.barber === currentUser.name || 
+                               a.barbeiro === currentUser.name ||
+                               a.barberName === currentUser.name ||
+                               a.nomeBarbeiro === currentUser.name;
                     });
-                    console.log(`👤 Filtro barbeiro ${currentUser.name}: ${beforeFilter} → ${agendamentos.length}`);
                 } else {
                     agendamentos = allAgendamentos;
-                    console.log(`👑 Admin - Todos os agendamentos: ${agendamentos.length}`);
                 }
                 
                 // Ordenar por data e hora
@@ -1330,12 +1403,6 @@
                 });
                 
                 console.log(`📅 Agendamentos processados: ${agendamentos.length}`);
-                
-                // Log dos primeiros agendamentos para debug
-                if (agendamentos.length > 0) {
-                    console.log('🔍 Primeiros agendamentos processados:', agendamentos.slice(0, 3));
-                }
-                
                 displayAgendamentos();
                 updateAgendamentosStats();
             } catch (error) {
@@ -1344,7 +1411,7 @@
             }
         }
 
-        // Carregar clientes
+        // Carregar clientes com planos personalizados
         async function loadClientes() {
             try {
                 let clientesFromCollection = [];
@@ -1358,19 +1425,33 @@
                 }
                 
                 const clientesSnapshot = await query.get();
-                clientesFromCollection = clientesSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    source: 'clients',
-                    isFrequentClient: true // Clientes cadastrados são sempre de plano
-                }));
+                clientesFromCollection = clientesSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        source: 'clients',
+                        isFrequentClient: true,
+                        // Estrutura do plano personalizado
+                        customPlan: data.customPlan || {
+                            monthlyValue: 0,
+                            services: [],
+                            totalServices: 0
+                        },
+                        // Status de pagamento
+                        paymentStatus: calculatePaymentStatus(data.nextPaymentDate),
+                        lastPaymentDate: data.lastPaymentDate || null,
+                        nextPaymentDate: data.nextPaymentDate || null,
+                        // Controle de uso mensal
+                        monthlyUsage: updateMonthlyUsage(data.monthlyUsage || {})
+                    };
+                });
 
                 // Extrair clientes únicos dos agendamentos
                 const clientesFromAgendamentos = new Map();
                 agendamentos.forEach(agendamento => {
                     const phone = agendamento.phone?.replace(/\D/g, '');
                     if (phone && !clientesFromAgendamentos.has(phone)) {
-                        // Verificar se é cliente de plano ou avulso
                         const isPlanoClient = clientesFromCollection.some(c => 
                             c.phone?.replace(/\D/g, '') === phone
                         );
@@ -1405,6 +1486,38 @@
                 console.error('❌ Erro ao carregar clientes:', error);
                 clientes = [];
             }
+        }
+
+        // Calcular status de pagamento
+        function calculatePaymentStatus(nextPaymentDate) {
+            if (!nextPaymentDate) return 'indefinido';
+            
+            const hoje = new Date();
+            const vencimento = new Date(nextPaymentDate);
+            const diffDays = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 5) return 'em_dia';
+            if (diffDays >= 0) return 'vencendo';
+            if (diffDays >= -7) return 'vencido';
+            return 'inadimplente';
+        }
+
+        // Atualizar uso mensal
+        function updateMonthlyUsage(currentUsage) {
+            const hoje = new Date();
+            const mesAtual = hoje.getMonth();
+            const anoAtual = hoje.getFullYear();
+            
+            // Se mudou o mês, resetar o uso
+            if (!currentUsage.month || currentUsage.month !== mesAtual || currentUsage.year !== anoAtual) {
+                return {
+                    month: mesAtual,
+                    year: anoAtual,
+                    servicesUsed: []
+                };
+            }
+            
+            return currentUsage;
         }
 
         // Carregar serviços
@@ -1468,7 +1581,382 @@
             }
         }
 
+        // Exibir clientes com planos personalizados
+        function displayClientes() {
+            const tbody = document.getElementById('clientesTableBody');
+            tbody.innerHTML = '';
 
+            const clientesFiltrados = getFilteredClientes();
+
+            if (clientesFiltrados.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #64748b;">
+                        👥 Nenhum cliente encontrado
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
+
+            clientesFiltrados.forEach(cliente => {
+                const row = document.createElement('tr');
+                
+                // Calcular uso do mês
+                const usoMensal = calculateMonthlyUsage(cliente);
+                
+                row.innerHTML = `
+                    <td>
+                        <div style="margin-bottom: 0.5rem;">
+                            <strong>${cliente.name}</strong><br>
+                            <small style="color: #64748b;">${cliente.phone}</small>
+                        </div>
+                        ${cliente.isFrequentClient && cliente.customPlan ? `
+                            <div class="client-plan-info">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem;">
+                                    💎 Plano: R$ ${cliente.customPlan.monthlyValue?.toFixed(2) || '0,00'}/mês
+                                </div>
+                                <div class="plan-services">
+                                    ${cliente.customPlan.services?.map(service => 
+                                        `<span class="service-badge">${service.quantity}x ${service.serviceName}</span>`
+                                    ).join('') || ''}
+                                </div>
+                            </div>
+                        ` : `
+                            <span class="tipo-badge tipo-avulso">Cliente Avulso</span>
+                        `}
+                    </td>
+                    <td>
+                        ${cliente.isFrequentClient ? `
+                            <span class="status-badge payment-status-${cliente.paymentStatus || 'indefinido'}">
+                                ${getPaymentStatusText(cliente.paymentStatus)}
+                            </span>
+                            ${cliente.lastPaymentDate ? `
+                                <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+                                    Último: ${formatDate(cliente.lastPaymentDate)}
+                                </div>
+                            ` : ''}
+                        ` : `
+                            <span style="color: #64748b;">-</span>
+                        `}
+                    </td>
+                    <td>
+                        ${cliente.isFrequentClient && cliente.customPlan ? `
+                            <div style="margin-bottom: 0.5rem;">
+                                <strong>${usoMensal.totalUsed}/${cliente.customPlan.totalServices || 0}</strong> serviços
+                            </div>
+                            <div class="usage-progress">
+                                <div class="usage-progress-bar" style="width: ${usoMensal.percentage}%"></div>
+                            </div>
+                            <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.25rem;">
+                                ${usoMensal.percentage.toFixed(0)}% utilizado
+                            </div>
+                        ` : `
+                            <span style="color: #64748b;">-</span>
+                        `}
+                    </td>
+                    <td>
+                        ${cliente.nextPaymentDate ? `
+                            <strong>${formatDate(cliente.nextPaymentDate)}</strong>
+                            <div style="font-size: 0.75rem; color: #64748b;">
+                                ${getDaysUntilPayment(cliente.nextPaymentDate)} dias
+                            </div>
+                        ` : `
+                            <span style="color: #64748b;">-</span>
+                        `}
+                    </td>
+                    <td>
+                        <div class="action-buttons">
+                            ${cliente.isFrequentClient ? `
+                                <button class="btn-small btn-payment" onclick="showPagamentoModal('${cliente.id}')">💳 Pagamento</button>
+                            ` : ''}
+                            <button class="btn-small btn-edit" onclick="editCliente('${cliente.id}')">✏️ Editar</button>
+                            <button class="btn-small btn-delete" onclick="deleteCliente('${cliente.id}')">🗑️ Excluir</button>
+                        </div>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+
+        // Calcular uso mensal do cliente
+        function calculateMonthlyUsage(cliente) {
+            if (!cliente.isFrequentClient || !cliente.customPlan) {
+                return { totalUsed: 0, percentage: 0 };
+            }
+
+            const clientePhone = cliente.phone?.replace(/\D/g, '');
+            const hoje = new Date();
+            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            
+            // Contar agendamentos concluídos no mês atual
+            const agendamentosMes = agendamentos.filter(a => {
+                const dataAgendamento = new Date(a.date);
+                return a.phone?.replace(/\D/g, '') === clientePhone &&
+                       dataAgendamento >= inicioMes &&
+                       a.status === 'concluido';
+            });
+
+            const totalUsed = agendamentosMes.length;
+            const totalServices = cliente.customPlan.totalServices || 0;
+            const percentage = totalServices > 0 ? (totalUsed / totalServices) * 100 : 0;
+
+            return { totalUsed, percentage: Math.min(percentage, 100) };
+        }
+
+        // Obter texto do status de pagamento
+        function getPaymentStatusText(status) {
+            const statusMap = {
+                'em_dia': 'Em Dia',
+                'vencendo': 'Vencendo',
+                'vencido': 'Vencido',
+                'inadimplente': 'Inadimplente',
+                'indefinido': 'Indefinido'
+            };
+            return statusMap[status] || 'Indefinido';
+        }
+
+        // Obter dias até o pagamento
+        function getDaysUntilPayment(nextPaymentDate) {
+            const hoje = new Date();
+            const vencimento = new Date(nextPaymentDate);
+            const diffDays = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 0) return `em ${diffDays}`;
+            if (diffDays === 0) return 'hoje';
+            return `${Math.abs(diffDays)} atraso`;
+        }
+
+        // Adicionar serviço ao plano
+        function addServiceToPlan() {
+            const container = document.getElementById('planServices');
+            const serviceDiv = document.createElement('div');
+            serviceDiv.className = 'service-selector';
+            
+            serviceDiv.innerHTML = `
+                <select class="form-input plan-service-select" required>
+                    <option value="">Selecione um serviço</option>
+                    ${servicos.map(s => `<option value="${s.id}" data-name="${s.name}" data-price="${s.price}">${s.name} - R$ ${s.price.toFixed(2)}</option>`).join('')}
+                </select>
+                <input type="number" class="form-input plan-service-quantity" placeholder="Qtd" min="1" required>
+                <input type="number" class="form-input plan-service-price" placeholder="Preço unit." step="0.01" required>
+                <button type="button" onclick="removeServiceFromPlan(this)" class="btn-small btn-delete">🗑️</button>
+            `;
+            
+            container.appendChild(serviceDiv);
+            
+            // Adicionar evento para preencher preço automaticamente
+            const select = serviceDiv.querySelector('.plan-service-select');
+            const priceInput = serviceDiv.querySelector('.plan-service-price');
+            
+            select.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption.dataset.price) {
+                    priceInput.value = selectedOption.dataset.price;
+                }
+                updatePlanTotal();
+            });
+            
+            serviceDiv.querySelector('.plan-service-quantity').addEventListener('input', updatePlanTotal);
+            priceInput.addEventListener('input', updatePlanTotal);
+        }
+
+        // Remover serviço do plano
+        function removeServiceFromPlan(button) {
+            button.parentElement.remove();
+            updatePlanTotal();
+        }
+
+        // Atualizar total do plano
+        function updatePlanTotal() {
+            const serviceSelectors = document.querySelectorAll('.service-selector');
+            let total = 0;
+            let totalServices = 0;
+            
+            serviceSelectors.forEach(selector => {
+                const quantity = parseInt(selector.querySelector('.plan-service-quantity').value) || 0;
+                const price = parseFloat(selector.querySelector('.plan-service-price').value) || 0;
+                total += quantity * price;
+                totalServices += quantity;
+            });
+            
+            document.getElementById('clienteValorMensal').value = total.toFixed(2);
+        }
+
+        // Mostrar modal de pagamento
+        function showPagamentoModal(clienteId) {
+            currentClienteId = clienteId;
+            const cliente = clientes.find(c => c.id === clienteId);
+            
+            if (!cliente) return;
+            
+            // Preencher informações do cliente
+            const clienteInfo = document.getElementById('pagamentoClienteInfo');
+            clienteInfo.innerHTML = `
+                <h4 style="margin-bottom: 1rem; font-weight: 600;">${cliente.name}</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <strong>Plano Mensal:</strong><br>
+                        R$ ${cliente.customPlan?.monthlyValue?.toFixed(2) || '0,00'}
+                    </div>
+                    <div>
+                        <strong>Status Atual:</strong><br>
+                        <span class="status-badge payment-status-${cliente.paymentStatus}">
+                            ${getPaymentStatusText(cliente.paymentStatus)}
+                        </span>
+                    </div>
+                </div>
+                ${cliente.customPlan?.services ? `
+                    <div>
+                        <strong>Serviços do Plano:</strong>
+                        <div class="plan-services" style="margin-top: 0.5rem;">
+                            ${cliente.customPlan.services.map(service => 
+                                `<span class="service-badge">${service.quantity}x ${service.serviceName}</span>`
+                            ).join('')}
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            
+            // Preencher valores padrão
+            document.getElementById('pagamentoValor').value = cliente.customPlan?.monthlyValue || 0;
+            
+            // Calcular próximo vencimento (próximo mês)
+            const proximoVencimento = new Date();
+            proximoVencimento.setMonth(proximoVencimento.getMonth() + 1);
+            document.getElementById('pagamentoProximoVencimento').value = proximoVencimento.toISOString().split('T')[0];
+            
+            document.getElementById('pagamentoModal').classList.remove('hidden');
+        }
+
+        // Salvar cliente com plano personalizado
+        async function saveCliente() {
+            try {
+                const serviceSelectors = document.querySelectorAll('.service-selector');
+                const planServices = [];
+                let totalServices = 0;
+                
+                serviceSelectors.forEach(selector => {
+                    const serviceSelect = selector.querySelector('.plan-service-select');
+                    const quantity = parseInt(selector.querySelector('.plan-service-quantity').value) || 0;
+                    const price = parseFloat(selector.querySelector('.plan-service-price').value) || 0;
+                    
+                    if (serviceSelect.value && quantity > 0) {
+                        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+                        planServices.push({
+                            serviceId: serviceSelect.value,
+                            serviceName: selectedOption.dataset.name,
+                            quantity: quantity,
+                            pricePerUnit: price
+                        });
+                        totalServices += quantity;
+                    }
+                });
+                
+                const formData = {
+                    name: document.getElementById('clienteNome').value,
+                    phone: document.getElementById('clienteTelefone').value,
+                    isFrequentClient: true,
+                    customPlan: {
+                        monthlyValue: parseFloat(document.getElementById('clienteValorMensal').value) || 0,
+                        services: planServices,
+                        totalServices: totalServices
+                    },
+                    nextPaymentDate: document.getElementById('clienteVencimento').value,
+                    paymentStatus: 'em_dia',
+                    notes: document.getElementById('clienteObservacoes').value,
+                    barber: currentUser.role === 'admin' ? 'admin' : currentUser.name,
+                    createdAt: new Date().toISOString(),
+                    createdBy: currentUser.id,
+                    monthlyUsage: {
+                        month: new Date().getMonth(),
+                        year: new Date().getFullYear(),
+                        servicesUsed: []
+                    }
+                };
+                
+                await db.collection('clients').add(formData);
+                
+                showSuccess('Cliente e plano personalizado salvos com sucesso!');
+                closeModal('clienteModal');
+                await loadClientes();
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar cliente:', error);
+                showError('Erro ao salvar cliente');
+            }
+        }
+
+        // Salvar pagamento
+        async function savePagamento() {
+            try {
+                if (!currentClienteId) return;
+                
+                const pagamentoData = {
+                    lastPaymentDate: document.getElementById('pagamentoData').value,
+                    nextPaymentDate: document.getElementById('pagamentoProximoVencimento').value,
+                    paymentStatus: 'em_dia'
+                };
+                
+                await db.collection('clients').doc(currentClienteId).update(pagamentoData);
+                
+                // Registrar histórico de pagamento
+                await db.collection('payments').add({
+                    clientId: currentClienteId,
+                    amount: parseFloat(document.getElementById('pagamentoValor').value),
+                    paymentDate: document.getElementById('pagamentoData').value,
+                    notes: document.getElementById('pagamentoObservacoes').value,
+                    createdAt: new Date().toISOString(),
+                    createdBy: currentUser.id
+                });
+                
+                showSuccess('Pagamento registrado com sucesso!');
+                closeModal('pagamentoModal');
+                await loadClientes();
+                updateDashboard();
+                
+            } catch (error) {
+                console.error('❌ Erro ao registrar pagamento:', error);
+                showError('Erro ao registrar pagamento');
+            }
+        }
+
+        // Event listeners para formulários
+        function setupEventListeners() {
+            // Formulário de agendamento
+            document.getElementById('agendamentoForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await saveAgendamento();
+            });
+            
+            // Formulário de cliente
+            document.getElementById('clienteForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await saveCliente();
+            });
+            
+            // Formulário de pagamento
+            document.getElementById('pagamentoForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await savePagamento();
+            });
+            
+            // Formulário de serviço
+            document.getElementById('servicoForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await saveServico();
+            });
+            
+            // Formulário de barbeiro
+            document.getElementById('barbeiroForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                await saveBarbeiro();
+            });
+        }
+
+        // Resto das funções permanecem iguais...
+        // [Incluir todas as outras funções do código anterior]
 
         // Exibir agendamentos
         function displayAgendamentos() {
@@ -1520,84 +2008,6 @@
                 
                 tbody.appendChild(row);
             });
-        }
-
-        // Exibir clientes
-        function displayClientes() {
-            const tbody = document.getElementById('clientesTableBody');
-            tbody.innerHTML = '';
-
-            const clientesFiltrados = getFilteredClientes();
-
-            clientesFiltrados.forEach(cliente => {
-                const row = document.createElement('tr');
-                
-                // Calcular estatísticas do cliente
-                const stats = calculateClientStats(cliente);
-                const tipoCliente = cliente.isFrequentClient ? 'plano' : 'avulso';
-                
-                row.innerHTML = `
-                    <td>
-                        <strong>${cliente.name}</strong>
-                        ${stats.visitasNoMes > 0 ? `
-                            <div class="client-visits">
-                                <div class="visit-counter">
-                                    📅 <span class="visit-badge">${stats.visitasNoMes}</span> visitas este mês
-                                </div>
-                            </div>
-                        ` : ''}
-                    </td>
-                    <td>${cliente.phone}</td>
-                    <td><span class="tipo-badge tipo-${tipoCliente}">${tipoCliente === 'plano' ? 'Plano' : 'Avulso'}</span></td>
-                    <td><strong>${stats.visitasNoMes}</strong></td>
-                    <td><strong>R$ ${stats.totalGasto.toFixed(2)}</strong></td>
-                    <td>${stats.ultimoAtendimento || 'Nunca'}</td>
-                    <td>
-                        <div class="action-buttons">
-                            <button class="btn-small btn-edit" onclick="editCliente('${cliente.id}')">✏️ Editar</button>
-                            <button class="btn-small btn-delete" onclick="deleteCliente('${cliente.id}')">🗑️ Excluir</button>
-                        </div>
-                    </td>
-                `;
-                
-                tbody.appendChild(row);
-            });
-        }
-
-        // Calcular estatísticas do cliente
-        function calculateClientStats(cliente) {
-            const clientePhone = cliente.phone?.replace(/\D/g, '');
-            const agendamentosCliente = agendamentos.filter(a => 
-                a.phone?.replace(/\D/g, '') === clientePhone
-            );
-
-            // Visitas no mês atual
-            const hoje = new Date();
-            const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-            const visitasNoMes = agendamentosCliente.filter(a => {
-                const dataAgendamento = new Date(a.date);
-                return dataAgendamento >= inicioMes && a.status === 'concluido';
-            }).length;
-
-            // Total gasto
-            const totalGasto = agendamentosCliente
-                .filter(a => a.status === 'concluido')
-                .reduce((total, a) => total + (a.price || 0), 0);
-
-            // Último atendimento
-            const ultimosAgendamentos = agendamentosCliente
-                .filter(a => a.status === 'concluido')
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            const ultimoAtendimento = ultimosAgendamentos.length > 0 
-                ? formatDate(ultimosAgendamentos[0].date)
-                : null;
-
-            return {
-                visitasNoMes,
-                totalGasto,
-                ultimoAtendimento
-            };
         }
 
         // Exibir serviços
@@ -1663,17 +2073,21 @@
             // Agendamentos hoje
             document.getElementById('totalAgendamentosHoje').textContent = agendamentosHoje.length;
             
-            // Faturamento do dia
+            // Faturamento do dia (incluindo planos mensais)
             const faturamentoDia = agendamentosHoje
                 .filter(a => a.status === 'concluido')
                 .reduce((total, a) => total + (a.price || 0), 0);
+            
+            // Adicionar receita de planos mensais
+            const receitaPlanos = calculateMonthlyPlanRevenue();
+            
             document.getElementById('faturamentoDia').textContent = `R$ ${faturamentoDia.toFixed(2)}`;
             
             // Clientes de plano
             const clientesPlano = clientes.filter(c => c.isFrequentClient).length;
             document.getElementById('totalClientesPlano').textContent = clientesPlano;
             
-            // Faturamento do mês
+            // Faturamento do mês (incluindo planos)
             const inicioMes = new Date();
             inicioMes.setDate(1);
             const faturamentoMes = agendamentos
@@ -1681,7 +2095,8 @@
                     const dataAgendamento = new Date(a.date);
                     return dataAgendamento >= inicioMes && a.status === 'concluido';
                 })
-                .reduce((total, a) => total + (a.price || 0), 0);
+                .reduce((total, a) => total + (a.price || 0), 0) + receitaPlanos;
+            
             document.getElementById('faturamentoMes').textContent = `R$ ${faturamentoMes.toFixed(2)}`;
             
             // Próximos agendamentos
@@ -1691,6 +2106,13 @@
             if (currentUser.role === 'admin') {
                 displayBarberSummary();
             }
+        }
+
+        // Calcular receita de planos mensais
+        function calculateMonthlyPlanRevenue() {
+            return clientes
+                .filter(c => c.isFrequentClient && c.paymentStatus === 'em_dia')
+                .reduce((total, c) => total + (c.customPlan?.monthlyValue || 0), 0);
         }
 
         // Exibir resumo por barbeiro (Admin)
@@ -1820,6 +2242,7 @@
             
             const searchTerm = document.getElementById('searchCliente')?.value.toLowerCase();
             const filterTipo = document.getElementById('filterTipoCliente')?.value;
+            const filterStatus = document.getElementById('filterStatusPagamento')?.value;
             
             if (searchTerm) {
                 filtered = filtered.filter(c => 
@@ -1834,6 +2257,10 @@
                 } else if (filterTipo === 'avulso') {
                     filtered = filtered.filter(c => !c.isFrequentClient);
                 }
+            }
+            
+            if (filterStatus) {
+                filtered = filtered.filter(c => c.paymentStatus === filterStatus);
             }
             
             return filtered;
@@ -1862,7 +2289,7 @@
                 });
             }
             
-            // Serviços no formulário
+            // Serviços no formulário de agendamento - SEMPRE usar dados atualizados
             const servicoSelect = document.getElementById('agendamentoServico');
             if (servicoSelect) {
                 const firstOption = servicoSelect.children[0];
@@ -1871,12 +2298,35 @@
                 
                 servicos.forEach(servico => {
                     const option = document.createElement('option');
-                    option.value = servico.name;
+                    option.value = servico.id; // Usar ID em vez do nome
                     option.dataset.price = servico.price;
+                    option.dataset.name = servico.name;
                     option.textContent = `${servico.name} - R$ ${servico.price.toFixed(2)}`;
                     servicoSelect.appendChild(option);
                 });
             }
+            
+            // Atualizar selects de serviços nos planos personalizados
+            document.querySelectorAll('.plan-service-select').forEach(select => {
+                const currentValue = select.value;
+                const firstOption = select.children[0];
+                select.innerHTML = '';
+                select.appendChild(firstOption);
+                
+                servicos.forEach(servico => {
+                    const option = document.createElement('option');
+                    option.value = servico.id;
+                    option.dataset.name = servico.name;
+                    option.dataset.price = servico.price;
+                    option.textContent = `${servico.name} - R$ ${servico.price.toFixed(2)}`;
+                    select.appendChild(option);
+                });
+                
+                // Restaurar seleção anterior se existir
+                if (currentValue) {
+                    select.value = currentValue;
+                }
+            });
             
             // Horários
             const horarioSelect = document.getElementById('agendamentoHorario');
@@ -1894,40 +2344,27 @@
             }
         }
 
-        // Event listeners
-        function setupEventListeners() {
-            // Formulário de agendamento
-            document.getElementById('agendamentoForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                await saveAgendamento();
-            });
-            
-            // Formulário de cliente
-            document.getElementById('clienteForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                await saveCliente();
-            });
-            
-            // Formulário de serviço
-            document.getElementById('servicoForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                await saveServico();
-            });
-            
-            // Formulário de barbeiro
-            document.getElementById('barbeiroForm').addEventListener('submit', async function(e) {
-                e.preventDefault();
-                await saveBarbeiro();
-            });
-        }
-
         // Salvar agendamento
         async function saveAgendamento() {
             try {
+                const servicoSelect = document.getElementById('agendamentoServico');
+                const selectedOption = servicoSelect.options[servicoSelect.selectedIndex];
+                
+                // Buscar serviço pelo ID para garantir dados atualizados
+                const servicoId = servicoSelect.value;
+                const servicoAtualizado = servicos.find(s => s.id === servicoId);
+                
+                if (!servicoAtualizado) {
+                    showError('Serviço não encontrado. Por favor, recarregue a página.');
+                    return;
+                }
+                
                 const formData = {
                     name: document.getElementById('agendamentoCliente').value,
                     phone: document.getElementById('agendamentoTelefone').value,
-                    service: document.getElementById('agendamentoServico').value,
+                    service: servicoAtualizado.name, // Nome do serviço atualizado
+                    serviceId: servicoAtualizado.id, // ID do serviço para referência
+                    price: servicoAtualizado.price, // Preço sempre atualizado do banco
                     barber: currentUser.role === 'admin' 
                         ? document.getElementById('agendamentoBarbeiro').value 
                         : currentUser.name,
@@ -1941,11 +2378,6 @@
                     createdBy: currentUser.id
                 };
                 
-                // Buscar preço do serviço
-                const servicoSelect = document.getElementById('agendamentoServico');
-                const selectedOption = servicoSelect.options[servicoSelect.selectedIndex];
-                formData.price = parseFloat(selectedOption.dataset.price) || 0;
-                
                 await db.collection('appointments').add(formData);
                 
                 showSuccess('Agendamento salvo com sucesso!');
@@ -1956,32 +2388,6 @@
             } catch (error) {
                 console.error('❌ Erro ao salvar agendamento:', error);
                 showError('Erro ao salvar agendamento');
-            }
-        }
-
-        // Salvar cliente
-        async function saveCliente() {
-            try {
-                const formData = {
-                    name: document.getElementById('clienteNome').value,
-                    phone: document.getElementById('clienteTelefone').value,
-                    isFrequentClient: true, // Clientes cadastrados são sempre de plano
-                    planType: document.getElementById('clientePlano').value,
-                    notes: document.getElementById('clienteObservacoes').value,
-                    barber: currentUser.role === 'admin' ? 'admin' : currentUser.name,
-                    createdAt: new Date().toISOString(),
-                    createdBy: currentUser.id
-                };
-                
-                await db.collection('clients').add(formData);
-                
-                showSuccess('Cliente de plano salvo com sucesso!');
-                closeModal('clienteModal');
-                await loadClientes();
-                
-            } catch (error) {
-                console.error('❌ Erro ao salvar cliente:', error);
-                showError('Erro ao salvar cliente');
             }
         }
 
@@ -2098,6 +2504,10 @@
         }
 
         function showAddClienteModal() {
+            // Limpar serviços do plano anterior
+            document.getElementById('planServices').innerHTML = '';
+            // Adicionar um serviço inicial
+            addServiceToPlan();
             document.getElementById('clienteModal').classList.remove('hidden');
         }
 
@@ -2117,6 +2527,11 @@
             // Limpar formulários
             const form = document.querySelector(`#${modalId} form`);
             if (form) form.reset();
+            
+            // Limpar variáveis específicas
+            if (modalId === 'pagamentoModal') {
+                currentClienteId = null;
+            }
         }
 
         // Funções de filtro
@@ -2167,7 +2582,7 @@
                 .reduce((total, a) => total + (a.price || 0), 0);
             document.getElementById('receitaSemana').textContent = `R$ ${receitaSemana.toFixed(2)}`;
             
-            // Receita do mês
+            // Receita do mês (incluindo planos)
             const inicioMes = new Date();
             inicioMes.setDate(1);
             const receitaMes = agendamentos
@@ -2175,7 +2590,8 @@
                     const dataAgendamento = new Date(a.date);
                     return dataAgendamento >= inicioMes && a.status === 'concluido';
                 })
-                .reduce((total, a) => total + (a.price || 0), 0);
+                .reduce((total, a) => total + (a.price || 0), 0) + calculateMonthlyPlanRevenue();
+            
             document.getElementById('receitaMes').textContent = `R$ ${receitaMes.toFixed(2)}`;
             
             // Ticket médio
@@ -2235,24 +2651,479 @@
         }
 
         function showSuccess(message) {
-            // Implementar notificação de sucesso
             console.log('✅', message);
+            
+            // Criar notificação visual
+            const notification = document.createElement('div');
+            notification.className = 'success-message';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #d1fae5;
+                border: 1px solid #a7f3d0;
+                color: #065f46;
+                padding: 1rem 1.5rem;
+                border-radius: 10px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                z-index: 10000;
+                max-width: 400px;
+                font-weight: 500;
+            `;
+            notification.textContent = `✅ ${message}`;
+            
+            document.body.appendChild(notification);
+            
+            // Remover após 3 segundos
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 3000);
         }
 
         function showError(message) {
-            // Implementar notificação de erro
             console.error('❌', message);
+            
+            // Criar notificação visual
+            const notification = document.createElement('div');
+            notification.className = 'error-message';
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: #fee2e2;
+                border: 1px solid #fecaca;
+                color: #dc2626;
+                padding: 1rem 1.5rem;
+                border-radius: 10px;
+                box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+                z-index: 10000;
+                max-width: 400px;
+                font-weight: 500;
+            `;
+            notification.textContent = `❌ ${message}`;
+            
+            document.body.appendChild(notification);
+            
+            // Remover após 5 segundos (erro fica mais tempo)
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 5000);
         }
 
-        // Funções de edição e exclusão (implementar conforme necessário)
-        function editAgendamento(id) { console.log('Editar agendamento:', id); }
-        function deleteAgendamento(id) { console.log('Excluir agendamento:', id); }
-        function editCliente(id) { console.log('Editar cliente:', id); }
-        function deleteCliente(id) { console.log('Excluir cliente:', id); }
-        function editServico(id) { console.log('Editar serviço:', id); }
-        function deleteServico(id) { console.log('Excluir serviço:', id); }
-        function editBarbeiro(id) { console.log('Editar barbeiro:', id); }
-        function deleteBarbeiro(id) { console.log('Excluir barbeiro:', id); }
+        // Funções de edição e exclusão
+        async function editAgendamento(id) {
+            try {
+                const agendamento = agendamentos.find(a => a.id === id);
+                if (!agendamento) return;
+                
+                // Preencher formulário com dados existentes
+                document.getElementById('agendamentoCliente').value = agendamento.name;
+                document.getElementById('agendamentoTelefone').value = agendamento.phone;
+                
+                // Buscar serviço pelo ID ou nome para seleção correta
+                const servicoSelect = document.getElementById('agendamentoServico');
+                let servicoEncontrado = false;
+                
+                // Primeiro tentar pelo serviceId se existir
+                if (agendamento.serviceId) {
+                    const servicoOption = Array.from(servicoSelect.options).find(option => 
+                        option.value === agendamento.serviceId
+                    );
+                    if (servicoOption) {
+                        servicoSelect.value = agendamento.serviceId;
+                        servicoEncontrado = true;
+                    }
+                }
+                
+                // Se não encontrou pelo ID, tentar pelo nome
+                if (!servicoEncontrado) {
+                    const servicoOption = Array.from(servicoSelect.options).find(option => 
+                        option.dataset.name === agendamento.service
+                    );
+                    if (servicoOption) {
+                        servicoSelect.value = servicoOption.value;
+                        servicoEncontrado = true;
+                    }
+                }
+                
+                // Se ainda não encontrou, deixar vazio e mostrar aviso
+                if (!servicoEncontrado) {
+                    console.warn('⚠️ Serviço não encontrado na lista atual:', agendamento.service);
+                }
+                
+                if (currentUser.role === 'admin') {
+                    document.getElementById('agendamentoBarbeiro').value = agendamento.barber;
+                }
+                document.getElementById('agendamentoData').value = agendamento.date;
+                document.getElementById('agendamentoHorario').value = agendamento.time;
+                document.getElementById('agendamentoTipo').value = agendamento.isFrequentClient ? 'plano' : 'avulso';
+                document.getElementById('agendamentoObservacoes').value = agendamento.notes || '';
+                
+                // Alterar título do modal
+                document.querySelector('#agendamentoModal .modal-title').textContent = 'Editar Agendamento';
+                
+                // Alterar comportamento do formulário
+                const form = document.getElementById('agendamentoForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await updateAgendamento(id);
+                };
+                
+                document.getElementById('agendamentoModal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Erro ao editar agendamento:', error);
+                showError('Erro ao carregar dados do agendamento');
+            }
+        }
+
+        async function updateAgendamento(id) {
+            try {
+                const servicoSelect = document.getElementById('agendamentoServico');
+                const selectedOption = servicoSelect.options[servicoSelect.selectedIndex];
+                
+                // Buscar serviço pelo ID para garantir dados atualizados
+                const servicoId = servicoSelect.value;
+                const servicoAtualizado = servicos.find(s => s.id === servicoId);
+                
+                if (!servicoAtualizado) {
+                    showError('Serviço não encontrado. Por favor, recarregue a página.');
+                    return;
+                }
+                
+                const formData = {
+                    name: document.getElementById('agendamentoCliente').value,
+                    phone: document.getElementById('agendamentoTelefone').value,
+                    service: servicoAtualizado.name, // Nome do serviço atualizado
+                    serviceId: servicoAtualizado.id, // ID do serviço para referência
+                    price: servicoAtualizado.price, // Preço sempre atualizado do banco
+                    barber: currentUser.role === 'admin' 
+                        ? document.getElementById('agendamentoBarbeiro').value 
+                        : currentUser.name,
+                    date: document.getElementById('agendamentoData').value,
+                    time: document.getElementById('agendamentoHorario').value,
+                    isFrequentClient: document.getElementById('agendamentoTipo').value === 'plano',
+                    notes: document.getElementById('agendamentoObservacoes').value,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser.id
+                };
+                
+                await db.collection('appointments').doc(id).update(formData);
+                
+                showSuccess('Agendamento atualizado com sucesso!');
+                closeModal('agendamentoModal');
+                
+                // Restaurar comportamento original do formulário
+                const form = document.getElementById('agendamentoForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await saveAgendamento();
+                };
+                document.querySelector('#agendamentoModal .modal-title').textContent = 'Novo Agendamento';
+                
+                await loadAgendamentos();
+                updateDashboard();
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar agendamento:', error);
+                showError('Erro ao atualizar agendamento');
+            }
+        }
+
+        async function deleteAgendamento(id) {
+            if (confirm('Tem certeza que deseja excluir este agendamento?')) {
+                try {
+                    await db.collection('appointments').doc(id).delete();
+                    showSuccess('Agendamento excluído com sucesso!');
+                    await loadAgendamentos();
+                    updateDashboard();
+                } catch (error) {
+                    console.error('❌ Erro ao excluir agendamento:', error);
+                    showError('Erro ao excluir agendamento');
+                }
+            }
+        }
+
+        async function editCliente(id) {
+            try {
+                const cliente = clientes.find(c => c.id === id);
+                if (!cliente) return;
+                
+                // Preencher formulário com dados existentes
+                document.getElementById('clienteNome').value = cliente.name;
+                document.getElementById('clienteTelefone').value = cliente.phone;
+                document.getElementById('clienteValorMensal').value = cliente.customPlan?.monthlyValue || 0;
+                document.getElementById('clienteVencimento').value = cliente.nextPaymentDate || '';
+                document.getElementById('clienteObservacoes').value = cliente.notes || '';
+                
+                // Limpar e recriar serviços do plano
+                const planServicesContainer = document.getElementById('planServices');
+                planServicesContainer.innerHTML = '';
+                
+                if (cliente.customPlan?.services) {
+                    cliente.customPlan.services.forEach(service => {
+                        addServiceToPlan();
+                        const lastServiceDiv = planServicesContainer.lastElementChild;
+                        const serviceSelect = lastServiceDiv.querySelector('.plan-service-select');
+                        const quantityInput = lastServiceDiv.querySelector('.plan-service-quantity');
+                        const priceInput = lastServiceDiv.querySelector('.plan-service-price');
+                        
+                        // Encontrar o serviço pelo nome
+                        const servicoOption = Array.from(serviceSelect.options).find(option => 
+                            option.dataset.name === service.serviceName
+                        );
+                        if (servicoOption) {
+                            serviceSelect.value = servicoOption.value;
+                        }
+                        quantityInput.value = service.quantity;
+                        priceInput.value = service.pricePerUnit;
+                    });
+                } else {
+                    addServiceToPlan(); // Adicionar pelo menos um serviço
+                }
+                
+                // Alterar título do modal
+                document.querySelector('#clienteModal .modal-title').textContent = 'Editar Cliente';
+                
+                // Alterar comportamento do formulário
+                const form = document.getElementById('clienteForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await updateCliente(id);
+                };
+                
+                document.getElementById('clienteModal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Erro ao editar cliente:', error);
+                showError('Erro ao carregar dados do cliente');
+            }
+        }
+
+        async function updateCliente(id) {
+            try {
+                const serviceSelectors = document.querySelectorAll('.service-selector');
+                const planServices = [];
+                let totalServices = 0;
+                
+                serviceSelectors.forEach(selector => {
+                    const serviceSelect = selector.querySelector('.plan-service-select');
+                    const quantity = parseInt(selector.querySelector('.plan-service-quantity').value) || 0;
+                    const price = parseFloat(selector.querySelector('.plan-service-price').value) || 0;
+                    
+                    if (serviceSelect.value && quantity > 0) {
+                        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+                        planServices.push({
+                            serviceId: serviceSelect.value,
+                            serviceName: selectedOption.dataset.name,
+                            quantity: quantity,
+                            pricePerUnit: price
+                        });
+                        totalServices += quantity;
+                    }
+                });
+                
+                const formData = {
+                    name: document.getElementById('clienteNome').value,
+                    phone: document.getElementById('clienteTelefone').value,
+                    customPlan: {
+                        monthlyValue: parseFloat(document.getElementById('clienteValorMensal').value) || 0,
+                        services: planServices,
+                        totalServices: totalServices
+                    },
+                    nextPaymentDate: document.getElementById('clienteVencimento').value,
+                    notes: document.getElementById('clienteObservacoes').value,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser.id
+                };
+                
+                await db.collection('clients').doc(id).update(formData);
+                
+                showSuccess('Cliente atualizado com sucesso!');
+                closeModal('clienteModal');
+                
+                // Restaurar comportamento original do formulário
+                const form = document.getElementById('clienteForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await saveCliente();
+                };
+                document.querySelector('#clienteModal .modal-title').textContent = 'Novo Cliente de Plano Personalizado';
+                
+                await loadClientes();
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar cliente:', error);
+                showError('Erro ao atualizar cliente');
+            }
+        }
+
+        async function deleteCliente(id) {
+            if (confirm('Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita.')) {
+                try {
+                    await db.collection('clients').doc(id).delete();
+                    showSuccess('Cliente excluído com sucesso!');
+                    await loadClientes();
+                } catch (error) {
+                    console.error('❌ Erro ao excluir cliente:', error);
+                    showError('Erro ao excluir cliente');
+                }
+            }
+        }
+
+        async function editServico(id) {
+            try {
+                const servico = servicos.find(s => s.id === id);
+                if (!servico) return;
+                
+                // Preencher formulário com dados existentes
+                document.getElementById('servicoNome').value = servico.name;
+                document.getElementById('servicoPreco').value = servico.price;
+                document.getElementById('servicoTipo').value = servico.serviceType || 'corte';
+                
+                // Alterar título do modal
+                document.querySelector('#servicoModal .modal-title').textContent = 'Editar Serviço';
+                
+                // Alterar comportamento do formulário
+                const form = document.getElementById('servicoForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await updateServico(id);
+                };
+                
+                document.getElementById('servicoModal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Erro ao editar serviço:', error);
+                showError('Erro ao carregar dados do serviço');
+            }
+        }
+
+        async function updateServico(id) {
+            try {
+                const formData = {
+                    name: document.getElementById('servicoNome').value,
+                    price: parseFloat(document.getElementById('servicoPreco').value),
+                    serviceType: document.getElementById('servicoTipo').value,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser.id
+                };
+                
+                await db.collection('services').doc(id).update(formData);
+                
+                showSuccess('Serviço atualizado com sucesso!');
+                closeModal('servicoModal');
+                
+                // Restaurar comportamento original do formulário
+                const form = document.getElementById('servicoForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await saveServico();
+                };
+                document.querySelector('#servicoModal .modal-title').textContent = 'Novo Serviço';
+                
+                await loadServicos();
+                populateSelects();
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar serviço:', error);
+                showError('Erro ao atualizar serviço');
+            }
+        }
+
+        async function deleteServico(id) {
+            if (confirm('Tem certeza que deseja excluir este serviço?')) {
+                try {
+                    await db.collection('services').doc(id).delete();
+                    showSuccess('Serviço excluído com sucesso!');
+                    await loadServicos();
+                    populateSelects();
+                } catch (error) {
+                    console.error('❌ Erro ao excluir serviço:', error);
+                    showError('Erro ao excluir serviço');
+                }
+            }
+        }
+
+        async function editBarbeiro(id) {
+            if (currentUser.role !== 'admin') return;
+            
+            try {
+                const barbeiro = barbeiros.find(b => b.id === id);
+                if (!barbeiro) return;
+                
+                // Preencher formulário com dados existentes
+                document.getElementById('barbeiroNome').value = barbeiro.name;
+                document.getElementById('barbeiroEspecialidade').value = barbeiro.specialty;
+                
+                // Alterar título do modal
+                document.querySelector('#barbeiroModal .modal-title').textContent = 'Editar Barbeiro';
+                
+                // Alterar comportamento do formulário
+                const form = document.getElementById('barbeiroForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await updateBarbeiro(id);
+                };
+                
+                document.getElementById('barbeiroModal').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('❌ Erro ao editar barbeiro:', error);
+                showError('Erro ao carregar dados do barbeiro');
+            }
+        }
+
+        async function updateBarbeiro(id) {
+            try {
+                const formData = {
+                    name: document.getElementById('barbeiroNome').value,
+                    specialty: document.getElementById('barbeiroEspecialidade').value,
+                    updatedAt: new Date().toISOString(),
+                    updatedBy: currentUser.id
+                };
+                
+                await db.collection('barbers').doc(id).update(formData);
+                
+                showSuccess('Barbeiro atualizado com sucesso!');
+                closeModal('barbeiroModal');
+                
+                // Restaurar comportamento original do formulário
+                const form = document.getElementById('barbeiroForm');
+                form.onsubmit = async function(e) {
+                    e.preventDefault();
+                    await saveBarbeiro();
+                };
+                document.querySelector('#barbeiroModal .modal-title').textContent = 'Novo Barbeiro';
+                
+                await loadBarbeiros();
+                populateSelects();
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar barbeiro:', error);
+                showError('Erro ao atualizar barbeiro');
+            }
+        }
+
+        async function deleteBarbeiro(id) {
+            if (currentUser.role !== 'admin') return;
+            
+            if (confirm('Tem certeza que deseja excluir este barbeiro?')) {
+                try {
+                    await db.collection('barbers').doc(id).delete();
+                    showSuccess('Barbeiro excluído com sucesso!');
+                    await loadBarbeiros();
+                    populateSelects();
+                } catch (error) {
+                    console.error('❌ Erro ao excluir barbeiro:', error);
+                    showError('Erro ao excluir barbeiro');
+                }
+            }
+        }
 
         // Voltar para seleção de usuário
         function voltarParaSelecaoUsuario() {
@@ -2285,7 +3156,7 @@
             }
         }
 
-        console.log('🎯 Sistema Multi-usuário da Barbearia Pedro\'s carregado com debug!');
+        console.log('🎯 Sistema com Planos Personalizados da Barbearia Pedro\'s carregado!');
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'979deee6e43801ad',t:'MTc1Njk5MzU4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'979e5bc8a675a466',t:'MTc1Njk5ODA0OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
