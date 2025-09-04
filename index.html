@@ -254,6 +254,7 @@
         }
         
 
+
         
         .stats-grid {
             display: grid;
@@ -618,6 +619,8 @@
             </div>
         </div>
 
+
+
         <!-- Visão Admin -->
         <div id="adminView" class="admin-view hidden">
             <h2>👑 Visão Administrativa - Todos os Barbeiros</h2>
@@ -632,6 +635,7 @@
             <button class="nav-tab" onclick="showSection('servicos')">✂️ Serviços</button>
             <button class="nav-tab" onclick="showSection('financeiro')">💰 Financeiro</button>
             <button class="nav-tab admin-only hidden" onclick="showSection('barbeiros')">💇‍♂️ Barbeiros</button>
+
         </div>
 
         <!-- Dashboard -->
@@ -1230,12 +1234,24 @@
             }
         }
 
-
-
         // Carregar dados iniciais
         async function loadInitialData() {
             try {
                 console.log('📊 Carregando dados iniciais...');
+                console.log('🔍 Verificando conexão com Firebase...');
+                
+                // Testar conexão com Firebase
+                const testSnapshot = await db.collection('appointments').limit(1).get();
+                console.log('🔥 Firebase conectado! Documentos encontrados:', testSnapshot.size);
+                
+                // Listar todas as coleções para debug
+                const collections = ['appointments', 'clients', 'services', 'barbers'];
+                for (const collectionName of collections) {
+                    const snapshot = await db.collection(collectionName).get();
+                    console.log(`📁 Coleção ${collectionName}: ${snapshot.size} documentos`);
+                    
+
+                }
                 
                 await Promise.all([
                     loadAgendamentos(),
@@ -1250,6 +1266,7 @@
                 console.log('✅ Dados carregados com sucesso');
             } catch (error) {
                 console.error('❌ Erro ao carregar dados:', error);
+                console.error('🔍 Detalhes do erro:', error.message);
                 showError('Erro ao carregar dados do sistema');
             }
         }
@@ -1257,20 +1274,68 @@
         // Carregar agendamentos
         async function loadAgendamentos() {
             try {
-                let query = db.collection('appointments').orderBy('date', 'desc').orderBy('time', 'desc');
+                console.log('🔄 Carregando agendamentos do Firebase...');
                 
-                // Se não for admin, filtrar por barbeiro
+                // Carregar todos os agendamentos primeiro
+                const snapshot = await db.collection('appointments').get();
+                let allAgendamentos = snapshot.docs.map(doc => {
+                    const data = doc.data();
+                    console.log('📄 Agendamento bruto:', data);
+                    
+                    // Normalizar campos para compatibilidade com diferentes estruturas
+                    const normalized = {
+                        id: doc.id,
+                        ...data,
+                        // Campos principais - tentar diferentes variações
+                        name: data.name || data.clientName || data.cliente || data.nomeCliente,
+                        phone: data.phone || data.clientPhone || data.telefone || data.telefoneCliente,
+                        service: data.service || data.servico || data.serviceName || data.nomeServico,
+                        barber: data.barber || data.barbeiro || data.barberName || data.nomeBarbeiro,
+                        date: data.date || data.data || data.appointmentDate,
+                        time: data.time || data.horario || data.hora || data.appointmentTime,
+                        price: parseFloat(data.price || data.valor || data.preco || 0),
+                        status: data.status || data.situacao || 'agendado',
+                        isFrequentClient: data.isFrequentClient || data.clienteFrequente || data.frequentClient || false,
+                        source: data.source || (data.origem === 'app' ? 'app_agendamento' : 'manual'),
+                        createdAt: data.createdAt || data.criadoEm || data.timestamp || new Date().toISOString(),
+                        notes: data.notes || data.observacoes || data.obs || ''
+                    };
+                    
+                    console.log('📄 Agendamento normalizado:', normalized);
+                    return normalized;
+                });
+                
+                console.log(`📊 Total de agendamentos encontrados: ${allAgendamentos.length}`);
+                
+                // Filtrar por barbeiro se não for admin
                 if (currentUser.role !== 'admin') {
-                    query = query.where('barber', '==', currentUser.name);
+                    const beforeFilter = allAgendamentos.length;
+                    agendamentos = allAgendamentos.filter(a => {
+                        const matchesBarber = a.barber === currentUser.name || 
+                                            a.barbeiro === currentUser.name ||
+                                            a.barberName === currentUser.name ||
+                                            a.nomeBarbeiro === currentUser.name;
+                        return matchesBarber;
+                    });
+                    console.log(`👤 Filtro barbeiro ${currentUser.name}: ${beforeFilter} → ${agendamentos.length}`);
+                } else {
+                    agendamentos = allAgendamentos;
+                    console.log(`👑 Admin - Todos os agendamentos: ${agendamentos.length}`);
                 }
                 
-                const snapshot = await query.get();
-                agendamentos = snapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
+                // Ordenar por data e hora
+                agendamentos.sort((a, b) => {
+                    if (a.date !== b.date) return b.date.localeCompare(a.date);
+                    return b.time.localeCompare(a.time);
+                });
                 
-                console.log(`📅 Carregados ${agendamentos.length} agendamentos`);
+                console.log(`📅 Agendamentos processados: ${agendamentos.length}`);
+                
+                // Log dos primeiros agendamentos para debug
+                if (agendamentos.length > 0) {
+                    console.log('🔍 Primeiros agendamentos processados:', agendamentos.slice(0, 3));
+                }
+                
                 displayAgendamentos();
                 updateAgendamentosStats();
             } catch (error) {
@@ -1403,12 +1468,25 @@
             }
         }
 
+
+
         // Exibir agendamentos
         function displayAgendamentos() {
             const tbody = document.getElementById('agendamentosTableBody');
             tbody.innerHTML = '';
 
             const agendamentosFiltrados = getFilteredAgendamentos();
+
+            if (agendamentosFiltrados.length === 0) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td colspan="9" style="text-align: center; padding: 2rem; color: #64748b;">
+                        📅 Nenhum agendamento encontrado
+                    </td>
+                `;
+                tbody.appendChild(row);
+                return;
+            }
 
             agendamentosFiltrados.forEach(agendamento => {
                 const row = document.createElement('tr');
@@ -2176,19 +2254,11 @@
         function editBarbeiro(id) { console.log('Editar barbeiro:', id); }
         function deleteBarbeiro(id) { console.log('Excluir barbeiro:', id); }
 
-
-
         // Voltar para seleção de usuário
         function voltarParaSelecaoUsuario() {
             console.log('🔙 Voltando para seleção de usuário...');
             
             try {
-                // Fechar dropdown se estiver aberto
-                const dropdown = document.getElementById('userDropdownMenu');
-                const btn = document.querySelector('.user-dropdown-btn');
-                if (dropdown) dropdown.classList.add('hidden');
-                if (btn) btn.classList.remove('active');
-                
                 // Esconder sistema principal
                 const mainSystem = document.getElementById('mainSystem');
                 const loginScreen = document.getElementById('loginScreen');
@@ -2215,9 +2285,7 @@
             }
         }
 
-
-
-        console.log('🎯 Sistema Multi-usuário da Barbearia Pedro\'s carregado!');
+        console.log('🎯 Sistema Multi-usuário da Barbearia Pedro\'s carregado com debug!');
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'979a92ee016b6eae',t:'MTc1Njk1ODM2NC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'979deee6e43801ad',t:'MTc1Njk5MzU4OC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
